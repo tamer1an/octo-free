@@ -1,0 +1,193 @@
+.octotree-show {
+  .octotree_github_only {
+    display: none;
+  }
+
+  .octotree_github_sidebar {
+    a.octotree_toggle {
+      right: 12px;
+      top: 14px;
+
+      &:not(.octotree_loading) > span:after,
+      &:not(.octotree_loading):hover > span:after {
+        #octicons.chevron-left();
+        font-size: 15px;
+      }
+    }
+  }
+
+  body.split-diff .container {
+    padding-left: 0;
+  }
+}
+
+.octotree_github_sidebar {
+  padding-top: 60px;
+  background-color: #f7f7f7;
+  border-right: none;
+
+  .octotree_github_only {
+    display: block;
+  }
+
+  .octotree_views {
+    border-right: 1px solid #ddd;
+    background-color: #fff;
+
+    .octotree_view {
+      .octotree_view_header {
+        font-weight: normal;
+        text-shadow: none;
+        height: 60px;
+        line-height: 2.8;
+        background: #fafbfc none;
+        border-right: 1px solid #e1e4e8;
+        border-bottom: 1px solid #e1e4e8;
+        padding-top: 2px;
+      }
+
+      .octotree_help {
+        & > span:before {
+          #octicons.question();
+          color: @dark;
+        }
+      }
+
+      input[type=text], textarea {
+        padding: 4px 8px;
+        color: #24292e;
+        background-color: #fafbfc;
+        border: 1px solid #d1d5da;
+        border-radius: 3px;
+        outline: none;
+        box-shadow: rgba(27, 31, 35, 0.075) 0px 1px 2px inset;
+
+        &:focus {
+          border-color: #2188ff;
+          box-shadow: inset 0 1px 2px rgba(27,31,35,0.075), 0 0 0 0.2em rgba(3,102,214,0.3);
+        }
+      }
+
+      textarea {
+        padding: 6px 8px;
+      }
+    }
+
+    .octotree_treeview {
+      .octotree_header_repo {
+        font-size: 13px;
+        font-weight: normal;
+
+        &:before {
+          #octicons.repo();
+          position: relative;
+          top: 2px;
+          color: @light;
+        }
+      }
+
+      .octotree_header_branch {
+        font-size: 11px;
+
+        &:before {
+          #octicons.git-branch();
+          position: relative;
+          top: 2px;
+          color: @light;
+        }
+      }
+
+      .jstree-icon.tree, .jstree-icon.commit, .jstree-icon.file-generic {
+        margin-top: 0;
+        margin-right: 2px;
+      }
+      .jstree-icon.tree:before {
+        #octicons.file-directory();
+        color: #8197B1;
+      }
+      .jstree-icon.file-generic:before {
+        #octicons.file-text();
+        color: @gray;
+      }
+      .jstree-node.jstree-leaf:hover {
+        .jstree-icon.blob:before {
+          #octicons.link-external();
+          color: @accent;
+          font-size: 15px;
+        }
+      }
+      .jstree-icon.commit:before {
+        #octicons.file-submodule();
+        color: @gray;
+      }
+      .jstree-anchor {
+        color: #0366d6 !important;
+        & > span {
+          color: black;
+        }
+      }
+      .jstree-default {
+        .jstree-wholerow-hovered {
+          background: #eee;
+        }
+        .jstree-wholerow-clicked {
+          background: #dbeeff;
+        }
+      }
+
+      .patch {
+        display: none;
+      }
+
+      .patch:last-of-type {
+        display: inline;
+        font-size: 80%;
+        span {
+          padding-left: 5px;
+        }
+      }
+    }
+  }
+
+  a.octotree_toggle, a.octotree_opts {
+    color: black !important;
+
+    &:hover, &.selected {
+      color: #0366d6 !important;
+    }
+  }
+
+  a.octotree_opts {
+    top: 21px;
+    right: 48px;
+    width: 14px;
+    height: 16px;
+
+    .settings:before {
+      #octicons.gear();
+      color: @dark;
+      font-size: 15px;
+    }
+
+    &:hover .settings:before {
+      color: @blue;
+    }
+  }
+
+  a.octotree_toggle {
+    top: 14px;
+    right: -35px;
+
+    &:not(.octotree_loading) > span:after,
+    &:not(.octotree_loading):hover > span:after {
+      #octicons.chevron-right();
+      font-size: 15px;
+      position: relative;
+      left: 3px;
+    }
+
+    &:not(.octotree_loading):hover > span:after {
+      color: @blue;
+    }
+  }
+}
