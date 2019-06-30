@@ -1,25 +1,37 @@
 {
   "name": "octo-free",
   "version": "10.0.0",
-  "description": "Code tree for GitHub",
+  "description": "Alternative code tree for GitHub",
   "main": "inject.js",
   "scripts": {
-    "start": "gulp",
-    "build": "gulp build",
-    "test": "gulp test",
-    "dist": "gulp dist --production"
+    "build": "./node_modules/.bin/tsc ./src/app.ts --outDir ./pkg",
+    "build:src": "react-scripts build",
+    "start": "react-scripts start",
+    "test": "react-scripts test",
+    "coverage": "npm test -- --coverage",
+    "eject": "react-scripts eject",
+    "ui:start": "gulp",
+    "ui:build": "gulp build",
+    "ui:test": "gulp test",
+    "ui:dist": "gulp dist --production"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/tamer1an/octo-free"
-  },
-  "author": "Andrii Trybynenko <tamerjlah@gmail.com>, Buu Nguyen <buunguyen@gmail.com>, [contributors](https://github.com/tamer1an/octo-free/graphs/contributors)",
-  "license": "AGPL",
-  "bugs": {
-    "url": "https://github.com/tamer1an/octo-free/issues"
-  },
-  "homepage": "https://github.com/tamer1an/octo-free",
   "devDependencies": {
+    "@types/jest": "^24.0.14",
+    "@types/node": "^11.13.4",
+    "@types/node-red": "^0.17.3",
+    "@types/react": "^16.8.13",
+    "@types/react-dom": "^16.8.4",
+    "enzyme": "^3.9.0",
+    "enzyme-adapter-react-16": "^1.14.0",
+    "jest-enzyme": "^7.0.2",
+    "react": "^16.8.6",
+    "react-dom": "^16.8.6",
+    "react-scripts": "^3.0.1",
+    "sinon": "^7.3.2",
+    "typescript": "^3.5.2",
+    "github-api": "^3.2.0"
+  },
+  "dependencies": {
     "async": "~3.1.0",
     "chromedriver": "^75.0.0",
     "crx": "^5.0.0",
@@ -27,7 +39,7 @@
     "eslint-plugin-react": "^7.14.2",
     "event-stream": "4.0.1",
     "firefox-profile": "~1.2.0",
-    "gulp": "^4.0.2",
+    "gulp": "3.9.1",
     "gulp-autoprefixer": "6.1.0",
     "gulp-clean": "^0.4.0",
     "gulp-concat": "*",
@@ -55,5 +67,27 @@
     "stream-series": "*",
     "underscore": "~1.9.1",
     "underscore.string": "~3.3.5"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tamer1an/octo-free"
+  },
+  "keywords": [
+    "node-red",
+    "github",
+    "red",
+    "iot"
+  ],
+  "author": "Andrii Trybynenko <tamerjlah@gmail.com>, Buu Nguyen <buunguyen@gmail.com>, [contributors](https://github.com/tamer1an/octo-free/graphs/contributors)",
+  "license": "AGPL",
+  "bugs": {
+    "url": "https://github.com/tamer1an/octo-free/issues"
+  },
+  "homepage": "https://github.com/tamer1an/node-red-contrib-template#readme",
+  "browserslist": [
+    ">0.2%",
+    "not dead",
+    "not ie <= 11",
+    "not op_mini all"
+  ]
 }

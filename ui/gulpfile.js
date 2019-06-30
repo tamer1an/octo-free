@@ -345,5 +345,5 @@ function buildTemplate(ctx) {
 
 function getVersion() {
   delete require.cache[require.resolve('./package.json')];
-  return require('./package.json').version;
+  return require('../package.json').version;
 }

@@ -711,8 +711,8 @@ function extractContainer(data, xhr, options) {
     // Then scrub any titles from their descendants
     obj.contents.find('title').remove()
 
-    // Gather all script[src] elements
-    obj.scripts = findAll(obj.contents, 'script[src]').remove()
+    // Gather all script[ui] elements
+    obj.scripts = findAll(obj.contents, 'script[ui]').remove()
     obj.contents = obj.contents.not(obj.scripts)
   }
 
@@ -733,7 +733,7 @@ function extractContainer(data, xhr, options) {
 function executeScriptTags(scripts) {
   if (!scripts) return
 
-  var existingScripts = $('script[src]')
+  var existingScripts = $('script[ui]')
 
   scripts.each(function() {
     var src = this.src
