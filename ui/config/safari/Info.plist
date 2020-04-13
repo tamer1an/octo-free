@@ -28,7 +28,7 @@
 					<string>jquery-ui.js</string>
 					<string>jstree.js</string>
 					<string>keymaster.js</string>
-					<string>ondemand.js</string>
+					<!-- <string>ondemand.js</string> -->
 					<string>file-icons.js</string>
 					<string>octotree.js</string>
 				</array>

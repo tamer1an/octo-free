@@ -23,7 +23,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         'jquery-ui.js',
         'jstree.js',
         'keymaster.js',
-        'ondemand.js',
+        // 'ondemand.js',
         'octotree.js'
       ];
 
