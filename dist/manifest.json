@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "Octo-Free React",
+  "version": "11.0.0",
+  "description": "Code tree for GitHub - Modern React Rewrite",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://github.com/*"
+  ],
+  "background": {
+    "service_worker": "service-worker-loader.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "js": [
+        "assets/index.tsx-SJQgoGQI.js"
+      ],
+      "matches": [
+        "https://github.com/*"
+      ]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "matches": [
+        "https://github.com/*"
+      ],
+      "resources": [
+        "assets/index.tsx-SJQgoGQI.js"
+      ],
+      "use_dynamic_url": false
+    }
+  ]
+}
