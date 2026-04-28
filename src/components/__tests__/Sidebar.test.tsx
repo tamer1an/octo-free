@@ -3,10 +3,10 @@ import Sidebar from '../Sidebar';
 
 describe('Sidebar Component', () => {
   it('renders correctly and toggles state', () => {
-    render(<Sidebar />);
+    render(<Sidebar owner="test-owner" repo="test-repo" />);
     
     // Initially open
-    expect(screen.getByText('Octo-Free')).toBeTruthy();
+    expect(screen.getByText('test-repo')).toBeTruthy();
     
     // Close it
     const closeBtn = screen.getByText('Close');

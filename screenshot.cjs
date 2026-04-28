@@ -14,7 +14,7 @@ const path = require('path');
   });
 
   const page = await browser.newPage();
-  await page.goto('https://github.com', { waitUntil: 'networkidle2' });
+  await page.goto('https://github.com/tamer1an/octo-free', { waitUntil: 'networkidle2' });
 
   try {
     await page.waitForSelector('#octo-free-root', { timeout: 5000 });

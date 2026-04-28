@@ -16,20 +16,25 @@
   "content_scripts": [
     {
       "js": [
-        "assets/index.tsx-SJQgoGQI.js"
+        "assets/index.tsx-loader-DL8mWBBQ.js"
       ],
       "matches": [
         "https://github.com/*"
       ]
     }
   ],
+  "options_ui": {
+    "page": "src/options/index.html",
+    "open_in_tab": true
+  },
   "web_accessible_resources": [
     {
       "matches": [
         "https://github.com/*"
       ],
       "resources": [
-        "assets/index.tsx-SJQgoGQI.js"
+        "assets/client-Cmjl_fXq.js",
+        "assets/index.tsx-BMhyfMeD.js"
       ],
       "use_dynamic_url": false
     }
