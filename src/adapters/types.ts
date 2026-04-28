@@ -20,3 +20,7 @@ export interface TreeNode {
   type: 'blob' | 'tree';
   children: TreeNode[];
 }
+
+export interface GitHubBranch {
+  name: string;
+}
