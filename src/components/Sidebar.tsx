@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import TreeItem from './TreeItem';
-import { fetchRepoTree, fetchBranches } from '../adapters/github';
+import { fetchRepoTree, fetchBranches, fetchFileContent } from '../adapters/github';
 import { TreeNode } from '../adapters/types';
 
 // Injecting Google Font for the Cartoon Studio vibe
@@ -22,6 +22,7 @@ const Sidebar: React.FC<SidebarProps> = ({ owner, repo }) => {
   const [branch, setBranch] = useState('main');
   const [branches, setBranches] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isPrivateHint, setIsPrivateHint] = useState(false);
 
   useEffect(() => {
     chrome.storage.sync.get(['githubToken'], async (result) => {
@@ -46,8 +47,10 @@ const Sidebar: React.FC<SidebarProps> = ({ owner, repo }) => {
         const data = await fetchRepoTree(owner, repo, branch, result.githubToken);
         setTree(data);
         setError('');
+        setIsPrivateHint(false);
       } catch (err: any) {
         setError(err.message || 'Failed to fetch repo tree');
+        setIsPrivateHint(!!(err as any).isPrivateRepoHint || !!(err as any).isAuthError);
       } finally {
         setLoading(false);
       }
@@ -67,32 +70,24 @@ const Sidebar: React.FC<SidebarProps> = ({ owner, repo }) => {
   };
 
   const handleDownloadFile = async (e: React.MouseEvent, node: TreeNode) => {
-    e.stopPropagation(); // prevent triggering the main onClick
-    if (node.type === 'blob') {
+    e.stopPropagation();
+    if (node.type !== 'blob') return;
+    chrome.storage.sync.get(['githubToken'], async (result) => {
       try {
-        const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${node.path}`;
-        const response = await fetch(rawUrl);
-        if (!response.ok) throw new Error('Network response was not ok');
-        const originalBlob = await response.blob();
-        
-        // Force application/octet-stream so the browser respects the extension in node.name instead of appending .txt
-        const blob = new Blob([originalBlob], { type: 'application/octet-stream' });
-        
+        const blob = await fetchFileContent(owner, repo, node.path, branch, result.githubToken);
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.style.display = 'none';
         a.href = url;
-        a.download = node.name; // Use exact file name with extension
+        a.download = node.name;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
       } catch (err) {
         console.error('Failed to download file', err);
-        // Fallback to opening in new tab
-        window.open(`https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${node.path}`, '_blank');
       }
-    }
+    });
   };
 
   const renderTree = (nodes: TreeNode[]) => {
@@ -266,7 +261,31 @@ const Sidebar: React.FC<SidebarProps> = ({ owner, repo }) => {
       </div>
       <div style={{ padding: '16px', flex: 1, overflowY: 'auto' }}>
         {loading && <p style={{ color: '#00d2ff', fontWeight: 700 }}>Loading awesome code...</p>}
-        {error && <p style={{ color: '#e94560', fontWeight: 700 }}>{error}</p>}
+        {error && (
+          <div>
+            <p style={{ color: '#e94560', fontWeight: 700 }}>{error}</p>
+            {isPrivateHint && (
+              <button
+                onClick={() => chrome.runtime.sendMessage({ action: 'openOptions' })}
+                style={{
+                  marginTop: '8px',
+                  padding: '8px 14px',
+                  backgroundColor: '#e94560',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontFamily: theme.font,
+                  fontWeight: 900,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  boxShadow: '3px 3px 0px #0f3460'
+                }}
+              >
+                Add GitHub Token
+              </button>
+            )}
+          </div>
+        )}
         {!loading && !error && renderTree(tree)}
       </div>
     </div>

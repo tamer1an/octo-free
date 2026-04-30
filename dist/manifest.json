@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Octo-Free React",
   "version": "11.0.0",
-  "description": "Code tree for GitHub - Modern React Rewrite",
+  "description": "Adds a file tree sidebar to GitHub repository pages. Browse files, switch branches, search by filename, and download files.",
   "permissions": [
     "storage"
   ],
@@ -13,7 +13,7 @@
   "content_scripts": [
     {
       "js": [
-        "assets/index.tsx-loader-DZHFXAir.js"
+        "assets/index.tsx-loader-DYGupgOT.js"
       ],
       "matches": [
         "https://github.com/*"
@@ -30,8 +30,8 @@
         "https://github.com/*"
       ],
       "resources": [
-        "assets/client-Cmjl_fXq.js",
-        "assets/index.tsx-BLWKA9Tg.js"
+        "assets/github-BTWQDC2s.js",
+        "assets/index.tsx-Dw-7enjJ.js"
       ],
       "use_dynamic_url": false
     }
