@@ -30,3 +30,6 @@ Built from the ground up using modern React and Vite, Octo-Free is incredibly fa
 🛡️ Privacy First: Octo-Free respects your privacy. We do not track your browsing history or collect personal data. The extension only activates on github.com. Your optional GitHub Personal Access Token is encrypted and securely stored locally using Chrome's native sync storage, meaning it never touches a third-party server.
 
 Say goodbye to endless clicking and take control of your GitHub workflow today with Octo-Free!
+
+**<img width="925" height="675" alt="image" src="https://github.com/user-attachments/assets/5a823663-3cd6-48d8-832f-333272ee1438" />
+**
