@@ -13,7 +13,7 @@
   "content_scripts": [
     {
       "js": [
-        "assets/index.tsx-loader-DYGupgOT.js"
+        "assets/index.tsx-loader-Bs6-0JNu.js"
       ],
       "matches": [
         "https://github.com/*"
@@ -31,7 +31,7 @@
       ],
       "resources": [
         "assets/github-BTWQDC2s.js",
-        "assets/index.tsx-Dw-7enjJ.js"
+        "assets/index.tsx-DS6CVKro.js"
       ],
       "use_dynamic_url": false
     }

@@ -11,27 +11,34 @@ interface TreeItemProps {
 const TreeItem: React.FC<TreeItemProps> = ({ label, isFolder, children, onClick, onIconClick }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [hover, setHover] = useState(false);
+  const [dlHover, setDlHover] = useState(false);
 
-  const theme = {
-    folder: '#00d2ff',
-    file: '#e94560',
-    bgHover: '#0f3460'
+  const cs = {
+    folder:    '#ffbf69',
+    file:      '#c9b8ff',
+    bgHover:   'rgba(255,160,50,0.12)',
+    border:    'rgba(255,160,50,0.22)',
+    indent:    'rgba(255,160,50,0.18)',
+    font:      "'Nunito', sans-serif",
   };
 
   return (
-    <div style={{ marginLeft: '12px', marginTop: '6px', userSelect: 'none' }}>
-      <div 
-        style={{ 
-          cursor: 'pointer', 
-          display: 'flex', 
+    <div style={{ marginLeft: '10px', marginTop: '3px', userSelect: 'none' }}>
+      <div
+        style={{
+          cursor: 'pointer',
+          display: 'flex',
           alignItems: 'center',
-          padding: '8px 12px',
-          borderRadius: '12px',
-          backgroundColor: hover ? theme.bgHover : 'transparent',
-          transition: 'background-color 0.2s',
-          fontWeight: 700,
-          color: isFolder ? theme.folder : theme.file,
-          border: hover ? '2px solid #00d2ff' : '2px solid transparent',
+          padding: '5px 8px',
+          borderRadius: '9px',
+          backgroundColor: hover ? cs.bgHover : 'transparent',
+          border: `1px solid ${hover ? cs.border : 'transparent'}`,
+          transition: 'background-color 0.15s, border-color 0.15s',
+          fontFamily: cs.font,
+          fontWeight: 600,
+          fontSize: '13px',
+          color: isFolder ? cs.folder : cs.file,
+          gap: '6px',
         }}
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
@@ -40,37 +47,63 @@ const TreeItem: React.FC<TreeItemProps> = ({ label, isFolder, children, onClick,
           else if (onClick) onClick();
         }}
       >
-        <span 
-          style={{ 
-            marginRight: '10px', 
-            width: '24px', 
-            display: 'inline-block', 
-            textAlign: 'center', 
-            fontSize: '18px',
-            transition: 'transform 0.1s',
-          }}
-          onMouseEnter={(e) => {
-            if (!isFolder) e.currentTarget.style.transform = 'scale(1.2)';
-          }}
-          onMouseLeave={(e) => {
-            if (!isFolder) e.currentTarget.style.transform = 'scale(1)';
-          }}
-          onClick={(e) => {
-            if (!isFolder && onIconClick) {
-              onIconClick(e);
-            }
-          }}
-          title={!isFolder ? "Download raw file" : undefined}
-        >
+        {/* Expand chevron for folders */}
+        {isFolder && (
+          <span style={{
+            fontSize: '10px',
+            opacity: 0.6,
+            transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+            transition: 'transform 0.15s ease',
+            flexShrink: 0,
+            color: cs.folder,
+          }}>▶</span>
+        )}
+
+        {/* File/folder icon */}
+        <span style={{ fontSize: '15px', flexShrink: 0 }}>
           {isFolder ? (isOpen ? '📂' : '📁') : '📄'}
         </span>
-        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '15px' }}>{label}</span>
+
+        {/* Label */}
+        <span style={{
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          flex: 1,
+          minWidth: 0,
+        }}>
+          {label}
+        </span>
+
+        {/* Download button — files only, shows on row hover */}
+        {!isFolder && hover && (
+          <span
+            title="Download"
+            onMouseEnter={() => setDlHover(true)}
+            onMouseLeave={() => setDlHover(false)}
+            onClick={e => { e.stopPropagation(); if (onIconClick) onIconClick(e); }}
+            style={{
+              flexShrink: 0,
+              fontSize: '13px',
+              opacity: dlHover ? 1 : 0.55,
+              transition: 'opacity 0.15s, transform 0.15s',
+              transform: dlHover ? 'scale(1.15)' : 'scale(1)',
+              cursor: 'pointer',
+              padding: '0 2px',
+            }}
+          >
+            ⬇
+          </span>
+        )}
       </div>
+
+      {/* Children */}
       {isFolder && isOpen && (
-        <div style={{ 
-          marginTop: '4px',
-          borderLeft: '4px dashed #0f3460',
-          marginLeft: '20px'
+        <div style={{
+          marginTop: '2px',
+          marginLeft: '14px',
+          borderLeft: `1px solid ${cs.indent}`,
+          paddingLeft: '4px',
         }}>
           {children}
         </div>
