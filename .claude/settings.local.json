@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh api *)",
+      "WebFetch(domain:github.com)",
+      "Bash(claude --version)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(where claude *)",
+      "Read(//c/Users/**)",
+      "Bash(git clone *)",
+      "Bash(/c/Users/tavr2/.vscode/extensions/anthropic.claude-code-2.1.123-win32-x64/resources/native-binary/claude.exe --help)",
+      "Bash(/c/Users/tavr2/.vscode/extensions/anthropic.claude-code-2.1.123-win32-x64/resources/native-binary/claude.exe plugin *)",
+      "Bash(git config *)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:v for k,v in d.items\\(\\) if k in ['scripts','dependencies','devDependencies']}, indent=2\\)\\)\")",
+      "Bash(npm run *)",
+      "Bash(node show-browser.mjs)",
+      "Bash(tasklist)",
+      "WebFetch(domain:cartoonsmart.com)",
+      "WebFetch(domain:www.youtube.com)",
+      "Bash(powershell -Command \"Compress-Archive -Path dist\\\\* -DestinationPath octo-free-v1.0.0.zip -Force\")",
+      "Bash(node -e \"const d='GitHub file tree sidebar with private repo support. Switch branches, search and download files from any repository.'; console.log\\(d.length + ' chars'\\)\")",
+      "Bash(powershell -Command \"Compress-Archive -Path dist\\\\* -DestinationPath octo-free-v11.0.0.zip -Force\")"
+    ]
+  }
+}
