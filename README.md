@@ -16,6 +16,8 @@ Navigate GitHub like a Pro! Octo-Free transforms how you explore repositories on
 
 Built from the ground up using modern React and Vite, Octo-Free is incredibly fast, lightweight, and features a stunning "Cartoon Studio" dark mode aesthetic that makes reading code a joy.
 
+![Artboard 1](https://user-images.githubusercontent.com/956869/60222787-ec57f780-987e-11e9-9b71-e4db49dabf9b.png)
+
 ✨ Key Features:
 
 🌲 Lightning-Fast Tree Navigation: Explore entire repository structures instantly. Navigate nested folders without ever reloading the page.
