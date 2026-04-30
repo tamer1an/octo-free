@@ -6,9 +6,6 @@
   "permissions": [
     "storage"
   ],
-  "host_permissions": [
-    "https://github.com/*"
-  ],
   "background": {
     "service_worker": "src/background/serviceWorker.ts",
     "type": "module"
