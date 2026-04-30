@@ -8,4 +8,5 @@ export default defineConfig({
     react(),
     crx({ manifest }),
   ],
+  publicDir: 'public',
 });

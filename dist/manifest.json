@@ -1,8 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "Octo-Free React",
+  "name": "Octo-Free",
   "version": "11.0.0",
-  "description": "Adds a file tree sidebar to GitHub repository pages. Browse files, switch branches, search by filename, and download files.",
+  "description": "GitHub file tree sidebar with private repo support. Switch branches, search and download files from any repository.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "permissions": [
     "storage"
   ],

@@ -16,7 +16,10 @@
       "Bash(node show-browser.mjs)",
       "Bash(tasklist)",
       "WebFetch(domain:cartoonsmart.com)",
-      "WebFetch(domain:www.youtube.com)"
+      "WebFetch(domain:www.youtube.com)",
+      "Bash(powershell -Command \"Compress-Archive -Path dist\\\\* -DestinationPath octo-free-v1.0.0.zip -Force\")",
+      "Bash(node -e \"const d='GitHub file tree sidebar with private repo support. Switch branches, search and download files from any repository.'; console.log\\(d.length + ' chars'\\)\")",
+      "Bash(powershell -Command \"Compress-Archive -Path dist\\\\* -DestinationPath octo-free-v11.0.0.zip -Force\")"
     ]
   }
 }
