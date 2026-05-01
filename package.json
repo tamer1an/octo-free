@@ -1,7 +1,7 @@
 {
-  "name": "octo-free",
+  "name": "github-file-tree-octofree",
   "version": "11.0.0",
-  "description": "Code tree for GitHub - Modern React Rewrite",
+  "description": "GitHub file tree sidebar with private repo support. Switch branches, search and download files from any repository.",
   "type": "module",
   "scripts": {
     "dev": "vite",

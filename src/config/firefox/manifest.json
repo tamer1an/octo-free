@@ -1,9 +1,9 @@
 {
-  "name": "Octo-Free",
+  "name": "Github File Tree (Octofree)",
   "version": "$VERSION",
   "manifest_version": 2,
   "author": "Buu Nguyen",
-  "description": "Code tree for GitHub",
+  "description": "GitHub file tree sidebar with private repo support. Switch branches, search and download files from any repository.",
   "homepage_url": "https://github.com/tamer1an/octo-free",
   "icons": {
     "48": "icons/icon48.png",

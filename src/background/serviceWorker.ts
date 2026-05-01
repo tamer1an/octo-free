@@ -1,7 +1,7 @@
 /// <reference types="chrome"/>
 
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('Octo-Free React Extension Installed');
+  console.log('Github File Tree (Octofree) Extension Installed');
 });
 
 chrome.runtime.onMessage.addListener((message) => {

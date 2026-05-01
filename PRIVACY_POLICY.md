@@ -1,11 +1,11 @@
-# Privacy Policy for Octo-Free
+# Privacy Policy for Github File Tree (Octofree)
 
-**Effective Date:** April 29, 2026
+**Effective Date:** May 1, 2026
 
-This Privacy Policy describes how the "Octo-Free" Chrome Extension ("the Extension") handles your data. We are committed to protecting your privacy and ensuring transparency in how the Extension operates.
+This Privacy Policy describes how the "Github File Tree (Octofree)" Chrome Extension ("the Extension") handles your data. We are committed to protecting your privacy and ensuring transparency in how the Extension operates.
 
 ## 1. Information Collection and Use
-Octo-Free is designed to respect your privacy. **The Extension does not collect, store, or transmit any personal data, analytics, or browsing history to any third-party servers or developers.**
+Github File Tree (Octofree) is designed to respect your privacy. **The Extension does not collect, store, or transmit any personal data, analytics, or browsing history to any third-party servers or developers.**
 
 All operations, including rendering the repository file tree, occur locally within your browser.
 
@@ -25,4 +25,4 @@ The Extension relies solely on the official GitHub API to function. We do not us
 If we make changes to this Privacy Policy, we will update the "Effective Date" at the top of this page. Because we do not collect your personal information, we cannot contact you directly regarding changes.
 
 ## 6. Contact Us
-If you have any questions or concerns regarding this Privacy Policy, please open an issue on the official Octo-Free GitHub repository.
+If you have any questions or concerns regarding this Privacy Policy, please open an issue on the official Github File Tree (Octofree) GitHub repository at https://github.com/tamer1an/octo-free.

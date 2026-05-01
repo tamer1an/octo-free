@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Octo-Free",
+  "name": "Github File Tree (Octofree)",
   "version": "11.0.0",
   "description": "GitHub file tree sidebar with private repo support. Switch branches, search and download files from any repository.",
   "icons": {
@@ -18,7 +18,7 @@
   "content_scripts": [
     {
       "js": [
-        "assets/index.tsx-loader-Bs6-0JNu.js"
+        "assets/index.tsx-loader-CEBm7Er3.js"
       ],
       "matches": [
         "https://github.com/*"
@@ -36,7 +36,7 @@
       ],
       "resources": [
         "assets/github-BTWQDC2s.js",
-        "assets/index.tsx-DS6CVKro.js"
+        "assets/index.tsx-CrojRfAe.js"
       ],
       "use_dynamic_url": false
     }

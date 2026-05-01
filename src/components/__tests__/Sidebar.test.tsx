@@ -32,6 +32,6 @@ describe('Sidebar Component', () => {
     fireEvent.click(closeBtn);
     
     // Now closed
-    expect(screen.getByTitle('Open Octo-Free')).toBeTruthy();
+    expect(screen.getByTitle('Open Github File Tree')).toBeTruthy();
   });
 });

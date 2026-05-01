@@ -77,14 +77,14 @@ const Options: React.FC = () => {
 
   return (
     <div style={{ padding: '32px', fontFamily: 'Inter, -apple-system, sans-serif', maxWidth: '540px', color: '#1f2328' }}>
-      <h2 style={{ marginTop: 0 }}>🐙 Octo-Free — GitHub Token</h2>
+      <h2 style={{ marginTop: 0 }}>🐙 Github File Tree (Octofree) — GitHub Token</h2>
       <p style={{ color: '#57606a', lineHeight: 1.6 }}>
         A <strong>Personal Access Token</strong> is required to browse private repositories and
         avoids GitHub API rate limits for public ones.
       </p>
       <p style={{ color: '#57606a', lineHeight: 1.6 }}>
         Create one at{' '}
-        <a href="https://github.com/settings/tokens/new?scopes=repo&description=Octo-Free" target="_blank" rel="noreferrer">
+        <a href="https://github.com/settings/tokens/new?scopes=repo&description=Github-File-Tree-Octofree" target="_blank" rel="noreferrer">
           github.com/settings/tokens
         </a>{' '}
         with the <strong>repo</strong> scope selected.
@@ -155,7 +155,7 @@ const Options: React.FC = () => {
       {validation === 'valid' && missingScopes && (
         <p style={{ marginTop: '8px', color: '#9a6700', fontSize: '13px' }}>
           To access private repos, re-generate the token with the <strong>repo</strong> scope at{' '}
-          <a href="https://github.com/settings/tokens/new?scopes=repo&description=Octo-Free" target="_blank" rel="noreferrer">
+          <a href="https://github.com/settings/tokens/new?scopes=repo&description=Github-File-Tree-Octofree" target="_blank" rel="noreferrer">
             github.com/settings/tokens
           </a>.
         </p>

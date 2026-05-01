@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Octo-Free",
+  "name": "Github File Tree (Octofree)",
   "version": "11.0.0",
   "description": "GitHub file tree sidebar with private repo support. Switch branches, search and download files from any repository.",
   "icons": {

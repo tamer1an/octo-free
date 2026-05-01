@@ -162,7 +162,7 @@ const Sidebar: React.FC<SidebarProps> = ({ owner, repo }) => {
         onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.12)'; }}
         onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)'; }}
         onClick={() => setIsOpen(true)}
-        title="Open Octo-Free"
+        title="Open Github File Tree"
       >
         🐙
       </button>
