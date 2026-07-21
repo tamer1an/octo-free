@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import TreeItem from './TreeItem';
 import { fetchRepoTree, fetchBranches, fetchFileContent, fetchPullRequests, fetchPullRequestFiles, buildPrTree } from '../adapters/github';
 import { TreeNode, GitHubPullRequest } from '../adapters/types';
@@ -7,8 +7,44 @@ type RefMode = 'branches' | 'pulls';
 interface PersistedUiState {
   isOpen: boolean;
   mode: RefMode;
+  docsFilterOn: boolean;
 }
 const UI_STATE_KEY = 'octoFreeUiState';
+
+// Directories where AI coding agents keep their instructions/skills/rules —
+// worth surfacing on their own since they're easy to miss buried in a full tree.
+const AGENT_CONFIG_FOLDERS = new Set([
+  '.claude',    // Claude Code
+  '.github',    // GitHub Copilot instructions & workflows
+  '.cursor',    // Cursor rules
+  '.windsurf',  // Windsurf
+  '.gemini',    // Gemini CLI
+  '.opencode',  // OpenCode
+  '.continue',  // Continue.dev
+  '.aider',     // Aider
+]);
+const isMarkdownFile = (name: string) => /\.mdx?$/i.test(name);
+
+// Prunes a tree down to markdown files (wherever they live) and whole agent-config
+// folders, keeping the folder chain leading to each match so context isn't lost.
+function filterDocsAndConfigTree(nodes: TreeNode[]): TreeNode[] {
+  const result: TreeNode[] = [];
+  for (const node of nodes) {
+    if (node.type === 'tree') {
+      if (AGENT_CONFIG_FOLDERS.has(node.name)) {
+        result.push(node);
+        continue;
+      }
+      const filteredChildren = filterDocsAndConfigTree(node.children);
+      if (filteredChildren.length > 0) {
+        result.push({ ...node, children: filteredChildren });
+      }
+    } else if (isMarkdownFile(node.name)) {
+      result.push(node);
+    }
+  }
+  return result;
+}
 
 // Extension is re-injected on every GitHub navigation, so open/closed + mode
 // must round-trip through chrome.storage or the sidebar resets on every page.
@@ -66,18 +102,46 @@ const Sidebar: React.FC<SidebarProps> = ({ owner, repo }) => {
   const [selectedPrNumber, setSelectedPrNumber] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isPrivateHint, setIsPrivateHint] = useState(false);
+  const [docsFilterOn, setDocsFilterOnState] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const setIsOpen = (next: boolean) => {
     setIsOpenState(next);
     saveUiState({ isOpen: next });
   };
 
+  const setDocsFilterOn = (next: boolean) => {
+    setDocsFilterOnState(next);
+    saveUiState({ docsFilterOn: next });
+  };
+
   useEffect(() => {
     loadUiState(state => {
       if (typeof state.isOpen === 'boolean') setIsOpenState(state.isOpen);
       if (state.mode) setModeState(state.mode);
+      if (typeof state.docsFilterOn === 'boolean') setDocsFilterOnState(state.docsFilterOn);
     });
   }, []);
+
+  // "/" focuses our search. GitHub binds the same key to its own top search bar
+  // via a bubble-phase listener, so ours must run in the capture phase (which
+  // always fires first) and stop propagation, or GitHub's handler wins the race
+  // and steals focus back before ours even runs. Skipped while another input
+  // already has focus so it doesn't hijack typing in progress.
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+      const active = document.activeElement;
+      const isTyping = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || (active as HTMLElement).isContentEditable);
+      if (isTyping) return;
+      e.preventDefault();
+      e.stopPropagation();
+      searchInputRef.current?.focus();
+    };
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => document.removeEventListener('keydown', onKeyDown, true);
+  }, [isOpen]);
 
   const switchToBranches = () => {
     setModeState('branches');
@@ -146,39 +210,49 @@ const Sidebar: React.FC<SidebarProps> = ({ owner, repo }) => {
 
   useEffect(() => {
     if (mode !== 'branches' || !branch) return;
+    let cancelled = false;
     setLoading(true);
     chrome.storage.sync.get(['githubToken'], async (result) => {
       try {
         const data = await fetchRepoTree(owner, repo, branch, result.githubToken);
+        if (cancelled) return;
         setTree(data);
         setError('');
         setIsPrivateHint(false);
       } catch (err: any) {
+        if (cancelled) return;
         setError(err.message || 'Failed to fetch repo tree');
         setIsPrivateHint(!!(err as any).isPrivateRepoHint || !!(err as any).isAuthError);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     });
+    // Guards against a slow fetch resolving after the user has switched mode/branch
+    // away and clobbering whatever tree is now current with stale data.
+    return () => { cancelled = true; };
   }, [owner, repo, branch, mode]);
 
   // In PR mode the tree is scoped to only the files that PR touched, annotated with +/- stats
   useEffect(() => {
     if (mode !== 'pulls' || selectedPrNumber == null) return;
+    let cancelled = false;
     setLoading(true);
     chrome.storage.sync.get(['githubToken'], async (result) => {
       try {
         const files = await fetchPullRequestFiles(owner, repo, selectedPrNumber, result.githubToken);
+        if (cancelled) return;
         setTree(buildPrTree(files));
         setError('');
         setIsPrivateHint(false);
       } catch (err: any) {
+        if (cancelled) return;
         setError(err.message || 'Failed to fetch pull request files');
         setIsPrivateHint(!!(err as any).isPrivateRepoHint || !!(err as any).isAuthError);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     });
+    return () => { cancelled = true; };
   }, [owner, repo, mode, selectedPrNumber]);
 
   const handleNodeClick = async (node: TreeNode) => {
@@ -292,7 +366,8 @@ const Sidebar: React.FC<SidebarProps> = ({ owner, repo }) => {
     });
     return files;
   };
-  const allFiles = getAllFiles(tree);
+  const displayedTree = docsFilterOn ? filterDocsAndConfigTree(tree) : tree;
+  const allFiles = getAllFiles(displayedTree);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -482,11 +557,13 @@ const Sidebar: React.FC<SidebarProps> = ({ owner, repo }) => {
             fontSize: '13px', pointerEvents: 'none', color: cs.muted,
           }}>🔍</span>
           <input
+            ref={searchInputRef}
             type="search"
             list="octo-free-files"
             value={searchQuery}
             onChange={handleSearch}
-            placeholder="Search files…"
+            placeholder="Search files… (press /)"
+            aria-label="Search files"
             style={{
               width: '100%',
               background: 'rgba(255,255,255,0.05)',
@@ -550,7 +627,13 @@ const Sidebar: React.FC<SidebarProps> = ({ owner, repo }) => {
           </div>
         )}
 
-        {!loading && !error && renderTree(tree)}
+        {!loading && !error && docsFilterOn && displayedTree.length === 0 && (
+          <div role="status" style={{ padding: '24px 14px', textAlign: 'center', color: cs.muted, fontSize: '13px', fontWeight: 600, lineHeight: 1.5 }}>
+            👁️ No markdown docs or agent config folders found in this repo.
+          </div>
+        )}
+
+        {!loading && !error && renderTree(displayedTree)}
       </div>
 
       {/* ── Footer ── */}
@@ -564,25 +647,48 @@ const Sidebar: React.FC<SidebarProps> = ({ owner, repo }) => {
         background: cs.bgHeader,
       }}>
         <span style={{ fontSize: '11px', color: cs.muted, fontWeight: 600 }}>
-          {allFiles.length} files
+          {allFiles.length} {docsFilterOn ? 'docs' : 'files'}
         </span>
-        <button
-          onClick={() => chrome.runtime.sendMessage({ action: 'openOptions' })}
-          title="Token settings"
-          style={{
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '16px',
-            opacity: 0.55,
-            transition: 'opacity 0.15s',
-            padding: '2px 4px',
-          }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.55'; }}
-        >
-          ⚙️
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <button
+            onClick={() => setDocsFilterOn(!docsFilterOn)}
+            title={docsFilterOn ? 'Show full file tree' : 'Show only docs & agent config'}
+            aria-label={docsFilterOn ? 'Show full file tree' : 'Show only docs & agent config'}
+            aria-pressed={docsFilterOn}
+            style={{
+              background: docsFilterOn ? 'rgba(255,160,50,0.18)' : 'transparent',
+              border: docsFilterOn ? `1px solid ${cs.border}` : '1px solid transparent',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '16px',
+              opacity: docsFilterOn ? 1 : 0.55,
+              transition: 'opacity 0.15s, background 0.15s',
+              padding: '2px 4px',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = docsFilterOn ? '1' : '0.55'; }}
+          >
+            👁️
+          </button>
+          <button
+            onClick={() => chrome.runtime.sendMessage({ action: 'openOptions' })}
+            title="Token settings"
+            aria-label="Token settings"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '16px',
+              opacity: 0.55,
+              transition: 'opacity 0.15s',
+              padding: '2px 4px',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.55'; }}
+          >
+            ⚙️
+          </button>
+        </div>
       </div>
     </div>
   );
