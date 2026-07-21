@@ -18,7 +18,7 @@
   "content_scripts": [
     {
       "js": [
-        "assets/index.tsx-loader-CEBm7Er3.js"
+        "assets/index.tsx-loader-CPc_n8Xw.js"
       ],
       "matches": [
         "https://github.com/*"
@@ -35,8 +35,8 @@
         "https://github.com/*"
       ],
       "resources": [
-        "assets/github-BTWQDC2s.js",
-        "assets/index.tsx-CrojRfAe.js"
+        "assets/github-DWmLeDtt.js",
+        "assets/index.tsx-CsTuj8S8.js"
       ],
       "use_dynamic_url": false
     }

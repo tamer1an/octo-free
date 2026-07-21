@@ -1,4 +1,4 @@
-import { GitHubTreeResponse, TreeNode, GitHubBranch } from './types';
+import { GitHubTreeResponse, TreeNode, GitHubBranch, GitHubPullRequest } from './types';
 
 function buildHeaders(token?: string): Record<string, string> {
   const headers: Record<string, string> = { 'Accept': 'application/vnd.github.v3+json' };
@@ -22,6 +22,15 @@ function apiError(response: Response): Error {
 
 export const fetchBranches = async (owner: string, repo: string, token?: string): Promise<GitHubBranch[]> => {
   const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/branches`, { headers: buildHeaders(token) });
+  if (!response.ok) throw apiError(response);
+  return response.json();
+};
+
+export const fetchPullRequests = async (owner: string, repo: string, token?: string): Promise<GitHubPullRequest[]> => {
+  const response = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/pulls?state=open&per_page=100`,
+    { headers: buildHeaders(token) }
+  );
   if (!response.ok) throw apiError(response);
   return response.json();
 };

@@ -24,3 +24,11 @@ export interface TreeNode {
 export interface GitHubBranch {
   name: string;
 }
+
+export interface GitHubPullRequest {
+  number: number;
+  title: string;
+  state: string;
+  head: { ref: string; sha: string };
+  html_url: string;
+}
