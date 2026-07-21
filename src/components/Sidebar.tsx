@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import TreeItem from './TreeItem';
-import { fetchRepoTree, fetchBranches, fetchFileContent, fetchPullRequests } from '../adapters/github';
+import { fetchRepoTree, fetchBranches, fetchFileContent, fetchPullRequests, fetchPullRequestFiles, buildPrTree } from '../adapters/github';
 import { TreeNode, GitHubPullRequest } from '../adapters/types';
 
 type RefMode = 'branches' | 'pulls';
@@ -19,6 +19,12 @@ function saveUiState(patch: Partial<PersistedUiState>) {
   loadUiState(current => {
     chrome.storage.local.set({ [UI_STATE_KEY]: { ...current, ...patch } });
   });
+}
+
+// GitHub's PR "Files changed" tab anchors each diff as #diff-<sha256 hex of the file path>
+async function sha256Hex(input: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 const fontLink = document.createElement('link');
@@ -139,7 +145,7 @@ const Sidebar: React.FC<SidebarProps> = ({ owner, repo }) => {
   }, [owner, repo]);
 
   useEffect(() => {
-    if (!branch) return;
+    if (mode !== 'branches' || !branch) return;
     setLoading(true);
     chrome.storage.sync.get(['githubToken'], async (result) => {
       try {
@@ -154,18 +160,39 @@ const Sidebar: React.FC<SidebarProps> = ({ owner, repo }) => {
         setLoading(false);
       }
     });
-  }, [owner, repo, branch]);
+  }, [owner, repo, branch, mode]);
 
-  const handleNodeClick = (node: TreeNode) => {
-    if (node.type === 'blob') {
-      // Navigate to the file without a hard reload by simulating a click that GitHub's Turbo router intercepts
-      const url = `/${owner}/${repo}/blob/${branch}/${node.path}`;
-      const link = document.createElement('a');
-      link.href = url;
-      document.body.appendChild(link);
-      link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-      document.body.removeChild(link);
-    }
+  // In PR mode the tree is scoped to only the files that PR touched, annotated with +/- stats
+  useEffect(() => {
+    if (mode !== 'pulls' || selectedPrNumber == null) return;
+    setLoading(true);
+    chrome.storage.sync.get(['githubToken'], async (result) => {
+      try {
+        const files = await fetchPullRequestFiles(owner, repo, selectedPrNumber, result.githubToken);
+        setTree(buildPrTree(files));
+        setError('');
+        setIsPrivateHint(false);
+      } catch (err: any) {
+        setError(err.message || 'Failed to fetch pull request files');
+        setIsPrivateHint(!!(err as any).isPrivateRepoHint || !!(err as any).isAuthError);
+      } finally {
+        setLoading(false);
+      }
+    });
+  }, [owner, repo, mode, selectedPrNumber]);
+
+  const handleNodeClick = async (node: TreeNode) => {
+    if (node.type !== 'blob') return;
+    // In PR mode, jump straight to that file's diff instead of the plain blob view
+    const url = mode === 'pulls' && selectedPrNumber != null
+      ? `/${owner}/${repo}/pull/${selectedPrNumber}/files#diff-${await sha256Hex(node.path)}`
+      : `/${owner}/${repo}/blob/${branch}/${node.path}`;
+    // Navigate without a hard reload by simulating a click that GitHub's Turbo router intercepts
+    const link = document.createElement('a');
+    link.href = url;
+    document.body.appendChild(link);
+    link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+    document.body.removeChild(link);
   };
 
   const handleDownloadFile = async (e: React.MouseEvent, node: TreeNode) => {
@@ -191,10 +218,12 @@ const Sidebar: React.FC<SidebarProps> = ({ owner, repo }) => {
 
   const renderTree = (nodes: TreeNode[]) => {
     return nodes.map(node => (
-      <TreeItem 
-        key={node.path} 
-        label={node.name} 
+      <TreeItem
+        key={node.path}
+        label={node.name}
         isFolder={node.type === 'tree'}
+        additions={node.additions}
+        deletions={node.deletions}
         onClick={() => handleNodeClick(node)}
         onIconClick={(e) => handleDownloadFile(e, node)}
       >

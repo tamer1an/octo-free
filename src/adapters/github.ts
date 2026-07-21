@@ -1,4 +1,4 @@
-import { GitHubTreeResponse, TreeNode, GitHubBranch, GitHubPullRequest } from './types';
+import { GitHubTreeResponse, TreeNode, GitHubBranch, GitHubPullRequest, GitHubPullRequestFile } from './types';
 
 function buildHeaders(token?: string): Record<string, string> {
   const headers: Record<string, string> = { 'Accept': 'application/vnd.github.v3+json' };
@@ -35,6 +35,23 @@ export const fetchPullRequests = async (owner: string, repo: string, token?: str
   return response.json();
 };
 
+const MAX_PR_FILE_PAGES = 10; // caps at 1000 changed files — avoids unbounded fetching on huge PRs
+
+export const fetchPullRequestFiles = async (owner: string, repo: string, pullNumber: number, token?: string): Promise<GitHubPullRequestFile[]> => {
+  const files: GitHubPullRequestFile[] = [];
+  for (let page = 1; page <= MAX_PR_FILE_PAGES; page++) {
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}/files?per_page=100&page=${page}`,
+      { headers: buildHeaders(token) }
+    );
+    if (!response.ok) throw apiError(response);
+    const data: GitHubPullRequestFile[] = await response.json();
+    files.push(...data);
+    if (data.length < 100) break;
+  }
+  return files;
+};
+
 export const fetchRepoTree = async (owner: string, repo: string, branch: string = 'main', token?: string): Promise<TreeNode[]> => {
   const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`, { headers: buildHeaders(token) });
   if (!response.ok) throw apiError(response);
@@ -63,18 +80,33 @@ export const validateToken = async (token: string): Promise<{ valid: boolean; lo
   return { valid: true, login: data.login, scopes };
 };
 
+// Recursively sort: folders first, then files, alphabetically
+function sortTree(nodes: TreeNode[]) {
+  nodes.sort((a, b) => {
+    if (a.type === b.type) {
+      return a.name.localeCompare(b.name);
+    }
+    return a.type === 'tree' ? -1 : 1;
+  });
+  nodes.forEach(node => {
+    if (node.children && node.children.length > 0) {
+      sortTree(node.children);
+    }
+  });
+}
+
 // Helper function to convert flat paths into a nested tree structure
 function buildTree(items: import('./types').GitHubTreeItem[]): TreeNode[] {
   const root: TreeNode = { name: 'root', path: '', type: 'tree', children: [] };
-  
+
   items.forEach(item => {
     const parts = item.path.split('/');
     let currentNode = root;
-    
+
     parts.forEach((part, index) => {
       const isLast = index === parts.length - 1;
       let childNode = currentNode.children.find(c => c.name === part);
-      
+
       if (!childNode) {
         childNode = {
           name: part,
@@ -84,26 +116,42 @@ function buildTree(items: import('./types').GitHubTreeItem[]): TreeNode[] {
         };
         currentNode.children.push(childNode);
       }
-      
+
       currentNode = childNode;
     });
   });
-  
-  // Recursively sort: folders first, then files, alphabetically
-  const sortTree = (nodes: TreeNode[]) => {
-    nodes.sort((a, b) => {
-      if (a.type === b.type) {
-        return a.name.localeCompare(b.name);
+
+  sortTree(root.children);
+  return root.children;
+}
+
+// Builds a tree containing only the files a PR touched, annotated with additions/deletions
+export function buildPrTree(files: GitHubPullRequestFile[]): TreeNode[] {
+  const root: TreeNode = { name: 'root', path: '', type: 'tree', children: [] };
+
+  files.forEach(file => {
+    const parts = file.filename.split('/');
+    let currentNode = root;
+
+    parts.forEach((part, index) => {
+      const isLast = index === parts.length - 1;
+      let childNode = currentNode.children.find(c => c.name === part);
+
+      if (!childNode) {
+        childNode = {
+          name: part,
+          path: parts.slice(0, index + 1).join('/'),
+          type: isLast ? 'blob' : 'tree',
+          children: [],
+          ...(isLast ? { additions: file.additions, deletions: file.deletions } : {}),
+        };
+        currentNode.children.push(childNode);
       }
-      return a.type === 'tree' ? -1 : 1;
+
+      currentNode = childNode;
     });
-    nodes.forEach(node => {
-      if (node.children && node.children.length > 0) {
-        sortTree(node.children);
-      }
-    });
-  };
-  
+  });
+
   sortTree(root.children);
   return root.children;
 }

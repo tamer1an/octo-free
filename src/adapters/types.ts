@@ -19,6 +19,8 @@ export interface TreeNode {
   path: string;
   type: 'blob' | 'tree';
   children: TreeNode[];
+  additions?: number;
+  deletions?: number;
 }
 
 export interface GitHubBranch {
@@ -31,4 +33,12 @@ export interface GitHubPullRequest {
   state: string;
   head: { ref: string; sha: string };
   html_url: string;
+}
+
+export interface GitHubPullRequestFile {
+  filename: string;
+  status: string;
+  additions: number;
+  deletions: number;
+  changes: number;
 }
