@@ -1,6 +1,6 @@
 {
   "name": "github-file-tree-octofree",
-  "version": "11.0.0",
+  "version": "11.1.0",
   "description": "GitHub file tree sidebar with private repo support. Switch branches, search and download files from any repository.",
   "type": "module",
   "scripts": {
