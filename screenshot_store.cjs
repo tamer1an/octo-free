@@ -65,6 +65,20 @@ const GITHUB_REPO_URL = 'https://github.com/tamer1an/octo-free';
     // Give React a moment to finish rendering (tree items, animations)
     await new Promise(r => setTimeout(r, 2000));
 
+    // The marquee tile showcases the Pull Requests mode to highlight that feature
+    if (size.name === 'screenshot_1400x560') {
+      const switchedToPulls = await page.evaluate(() => {
+        const btn = Array.from(document.querySelectorAll('#octo-free-root button'))
+          .find(b => b.title === 'Show open pull requests');
+        if (btn) { btn.click(); return true; }
+        return false;
+      });
+      if (switchedToPulls) {
+        console.log('  ✔ Switched to Pull Requests mode');
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+
     // Capture
     const filePath = path.join(OUTPUT_DIR, `${size.name}.png`);
     await page.screenshot({ path: filePath, type: 'png' });
@@ -105,6 +119,30 @@ const GITHUB_REPO_URL = 'https://github.com/tamer1an/octo-free';
     const closedPath = path.join(OUTPUT_DIR, 'screenshot_sidebar_closed.png');
     await detailPage.screenshot({ path: closedPath, type: 'png' });
     console.log(`  ✔ Saved → ${closedPath}`);
+
+    // Re-open, force Branches mode (state persists across captures in this same
+    // browser session), then switch on the docs/agent-config filter (the eye toggle)
+    await detailPage.evaluate(() => {
+      const openBtn = document.querySelector('#octo-free-root button[title="Open Github File Tree"]');
+      if (openBtn) openBtn.click();
+    });
+    await new Promise(r => setTimeout(r, 600));
+    await detailPage.evaluate(() => {
+      const branchesBtn = Array.from(document.querySelectorAll('#octo-free-root button'))
+        .find(b => b.title === 'Show branches');
+      if (branchesBtn) branchesBtn.click();
+    });
+    await new Promise(r => setTimeout(r, 600));
+    await detailPage.evaluate(() => {
+      const eyeBtn = Array.from(document.querySelectorAll('#octo-free-root button'))
+        .find(b => b.title === 'Show only docs & agent config');
+      if (eyeBtn) eyeBtn.click();
+    });
+    await new Promise(r => setTimeout(r, 600));
+
+    const docsFilterPath = path.join(OUTPUT_DIR, 'screenshot_docs_filter.png');
+    await detailPage.screenshot({ path: docsFilterPath, type: 'png' });
+    console.log(`  ✔ Saved → ${docsFilterPath}`);
   } catch (e) {
     console.error('  ✗ Failed to capture detail screenshots:', e.message);
   }

@@ -1,11 +1,12 @@
 {
   "name": "github-file-tree-octofree",
-  "version": "11.0.0",
+  "version": "11.1.0",
   "description": "GitHub file tree sidebar with private repo support. Switch branches, search and download files from any repository.",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:firefox": "tsc && vite build && node build-firefox.cjs",
     "preview": "vite preview",
     "test": "jest --config jest.config.cjs",
     "test:e2e": "jest --config jest.e2e.config.cjs",
@@ -27,6 +28,7 @@
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "puppeteer": "^22.3.0",
+    "sharp": "^0.35.5",
     "ts-jest": "^29.1.2",
     "typescript": "^5.3.3",
     "vite": "^5.1.0"

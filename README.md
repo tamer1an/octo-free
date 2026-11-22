@@ -33,3 +33,16 @@ Say goodbye to endless clicking and take control of your GitHub workflow today w
 
 **<img width="925" height="675" alt="image" src="https://github.com/user-attachments/assets/5a823663-3cd6-48d8-832f-333272ee1438" />
 **
+
+
+## Building
+
+| Target  | Command                 | Output                                        |
+| ------- | ----------------------- | --------------------------------------------- |
+| Chrome  | `npm run build`         | `dist/`                                       |
+| Firefox | `npm run build:firefox` | `dist-firefox/` + `octofree-firefox.zip` (AMO) |
+
+The Firefox build (`build-firefox.cjs`) repackages the Chrome MV3 output: it swaps the
+service worker for `background.scripts`, adds `browser_specific_settings.gecko`, drops
+Chrome-only manifest keys, pads icons to square (via `sharp`) and writes a zip whose entry
+names use `/` separators as AMO requires. Firefox 140+ is required.

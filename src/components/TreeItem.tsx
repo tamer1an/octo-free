@@ -6,9 +6,11 @@ interface TreeItemProps {
   children?: React.ReactNode;
   onClick?: () => void;
   onIconClick?: (e: React.MouseEvent) => void;
+  additions?: number;
+  deletions?: number;
 }
 
-const TreeItem: React.FC<TreeItemProps> = ({ label, isFolder, children, onClick, onIconClick }) => {
+const TreeItem: React.FC<TreeItemProps> = ({ label, isFolder, children, onClick, onIconClick, additions, deletions }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [hover, setHover] = useState(false);
   const [dlHover, setDlHover] = useState(false);
@@ -74,6 +76,14 @@ const TreeItem: React.FC<TreeItemProps> = ({ label, isFolder, children, onClick,
         }}>
           {label}
         </span>
+
+        {/* PR diff stats — files only, when the tree is scoped to a pull request */}
+        {!isFolder && (additions !== undefined || deletions !== undefined) && (
+          <span style={{ display: 'flex', gap: '5px', flexShrink: 0, fontSize: '11px', fontWeight: 700, fontFamily: cs.font }}>
+            {!!additions && <span style={{ color: '#4ade80' }}>+{additions}</span>}
+            {!!deletions && <span style={{ color: '#ff6b6b' }}>-{deletions}</span>}
+          </span>
+        )}
 
         {/* Download button — files only, shows on row hover */}
         {!isFolder && hover && (

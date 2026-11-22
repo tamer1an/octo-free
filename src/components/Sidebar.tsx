@@ -1,7 +1,67 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import TreeItem from './TreeItem';
-import { fetchRepoTree, fetchBranches, fetchFileContent } from '../adapters/github';
-import { TreeNode } from '../adapters/types';
+import { fetchRepoTree, fetchBranches, fetchFileContent, fetchPullRequests, fetchPullRequestFiles, buildPrTree } from '../adapters/github';
+import { TreeNode, GitHubPullRequest } from '../adapters/types';
+
+type RefMode = 'branches' | 'pulls';
+interface PersistedUiState {
+  isOpen: boolean;
+  mode: RefMode;
+  docsFilterOn: boolean;
+}
+const UI_STATE_KEY = 'octoFreeUiState';
+
+// Directories where AI coding agents keep their instructions/skills/rules —
+// worth surfacing on their own since they're easy to miss buried in a full tree.
+const AGENT_CONFIG_FOLDERS = new Set([
+  '.claude',    // Claude Code
+  '.github',    // GitHub Copilot instructions & workflows
+  '.cursor',    // Cursor rules
+  '.windsurf',  // Windsurf
+  '.gemini',    // Gemini CLI
+  '.opencode',  // OpenCode
+  '.continue',  // Continue.dev
+  '.aider',     // Aider
+]);
+const isMarkdownFile = (name: string) => /\.mdx?$/i.test(name);
+
+// Prunes a tree down to markdown files (wherever they live) and whole agent-config
+// folders, keeping the folder chain leading to each match so context isn't lost.
+function filterDocsAndConfigTree(nodes: TreeNode[]): TreeNode[] {
+  const result: TreeNode[] = [];
+  for (const node of nodes) {
+    if (node.type === 'tree') {
+      if (AGENT_CONFIG_FOLDERS.has(node.name)) {
+        result.push(node);
+        continue;
+      }
+      const filteredChildren = filterDocsAndConfigTree(node.children);
+      if (filteredChildren.length > 0) {
+        result.push({ ...node, children: filteredChildren });
+      }
+    } else if (isMarkdownFile(node.name)) {
+      result.push(node);
+    }
+  }
+  return result;
+}
+
+// Extension is re-injected on every GitHub navigation, so open/closed + mode
+// must round-trip through chrome.storage or the sidebar resets on every page.
+function loadUiState(cb: (state: Partial<PersistedUiState>) => void) {
+  chrome.storage.local.get([UI_STATE_KEY], result => cb(result[UI_STATE_KEY] || {}));
+}
+function saveUiState(patch: Partial<PersistedUiState>) {
+  loadUiState(current => {
+    chrome.storage.local.set({ [UI_STATE_KEY]: { ...current, ...patch } });
+  });
+}
+
+// GitHub's PR "Files changed" tab anchors each diff as #diff-<sha256 hex of the file path>
+async function sha256Hex(input: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 const fontLink = document.createElement('link');
 fontLink.href = 'https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;900&family=Fredoka+One&display=swap';
@@ -28,14 +88,104 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ owner, repo }) => {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpenState] = useState(true);
+  const [mode, setModeState] = useState<RefMode>('branches');
   const [tree, setTree] = useState<TreeNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [branch, setBranch] = useState('main');
   const [branches, setBranches] = useState<string[]>([]);
+  const [savedBranch, setSavedBranch] = useState('main');
+  const [pulls, setPulls] = useState<GitHubPullRequest[]>([]);
+  const [pullsLoading, setPullsLoading] = useState(false);
+  const [pullsError, setPullsError] = useState('');
+  const [selectedPrNumber, setSelectedPrNumber] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isPrivateHint, setIsPrivateHint] = useState(false);
+  const [docsFilterOn, setDocsFilterOnState] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const setIsOpen = (next: boolean) => {
+    setIsOpenState(next);
+    saveUiState({ isOpen: next });
+  };
+
+  const setDocsFilterOn = (next: boolean) => {
+    setDocsFilterOnState(next);
+    saveUiState({ docsFilterOn: next });
+  };
+
+  useEffect(() => {
+    loadUiState(state => {
+      if (typeof state.isOpen === 'boolean') setIsOpenState(state.isOpen);
+      if (state.mode) setModeState(state.mode);
+      if (typeof state.docsFilterOn === 'boolean') setDocsFilterOnState(state.docsFilterOn);
+    });
+  }, []);
+
+  // "/" focuses our search. GitHub binds the same key to its own top search bar
+  // via a bubble-phase listener, so ours must run in the capture phase (which
+  // always fires first) and stop propagation, or GitHub's handler wins the race
+  // and steals focus back before ours even runs. Skipped while another input
+  // already has focus so it doesn't hijack typing in progress.
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+      const active = document.activeElement;
+      const isTyping = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || (active as HTMLElement).isContentEditable);
+      if (isTyping) return;
+      e.preventDefault();
+      e.stopPropagation();
+      searchInputRef.current?.focus();
+    };
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => document.removeEventListener('keydown', onKeyDown, true);
+  }, [isOpen]);
+
+  const switchToBranches = () => {
+    setModeState('branches');
+    saveUiState({ mode: 'branches' });
+    setBranch(savedBranch);
+  };
+
+  const switchToPulls = () => {
+    setModeState('pulls');
+    saveUiState({ mode: 'pulls' });
+    setSavedBranch(branch);
+    if (pulls.length > 0) {
+      setSelectedPrNumber(pulls[0].number);
+      setBranch(pulls[0].head.ref);
+    }
+  };
+
+  useEffect(() => {
+    if (mode !== 'pulls' || pulls.length > 0 || pullsLoading) return;
+    setPullsLoading(true);
+    chrome.storage.sync.get(['githubToken'], async (result) => {
+      try {
+        const data = await fetchPullRequests(owner, repo, result.githubToken);
+        setPulls(data);
+        setPullsError('');
+        if (data.length > 0) {
+          setSelectedPrNumber(data[0].number);
+          setBranch(data[0].head.ref);
+        }
+      } catch (e: any) {
+        setPullsError(e.message || 'Failed to fetch pull requests');
+      } finally {
+        setPullsLoading(false);
+      }
+    });
+  }, [mode, owner, repo]);
+
+  const handleSelectPull = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const number = Number(e.target.value);
+    const pr = pulls.find(p => p.number === number);
+    if (!pr) return;
+    setSelectedPrNumber(number);
+    setBranch(pr.head.ref);
+  };
 
   useEffect(() => {
     chrome.storage.sync.get(['githubToken'], async (result) => {
@@ -43,9 +193,15 @@ const Sidebar: React.FC<SidebarProps> = ({ owner, repo }) => {
         const branchData = await fetchBranches(owner, repo, result.githubToken);
         const branchNames = branchData.map(b => b.name);
         setBranches(branchNames);
-        if (branchNames.includes('master')) setBranch('master');
-        else if (branchNames.includes('main')) setBranch('main');
-        else if (branchNames.length > 0) setBranch(branchNames[0]);
+        const defaultBranch = branchNames.includes('master')
+          ? 'master'
+          : branchNames.includes('main')
+            ? 'main'
+            : branchNames[0];
+        if (defaultBranch) {
+          setBranch(defaultBranch);
+          setSavedBranch(defaultBranch);
+        }
       } catch (e) {
         console.error('Failed to load branches', e);
       }
@@ -53,33 +209,64 @@ const Sidebar: React.FC<SidebarProps> = ({ owner, repo }) => {
   }, [owner, repo]);
 
   useEffect(() => {
-    if (!branch) return;
+    if (mode !== 'branches' || !branch) return;
+    let cancelled = false;
     setLoading(true);
     chrome.storage.sync.get(['githubToken'], async (result) => {
       try {
         const data = await fetchRepoTree(owner, repo, branch, result.githubToken);
+        if (cancelled) return;
         setTree(data);
         setError('');
         setIsPrivateHint(false);
       } catch (err: any) {
+        if (cancelled) return;
         setError(err.message || 'Failed to fetch repo tree');
         setIsPrivateHint(!!(err as any).isPrivateRepoHint || !!(err as any).isAuthError);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     });
-  }, [owner, repo, branch]);
+    // Guards against a slow fetch resolving after the user has switched mode/branch
+    // away and clobbering whatever tree is now current with stale data.
+    return () => { cancelled = true; };
+  }, [owner, repo, branch, mode]);
 
-  const handleNodeClick = (node: TreeNode) => {
-    if (node.type === 'blob') {
-      // Navigate to the file without a hard reload by simulating a click that GitHub's Turbo router intercepts
-      const url = `/${owner}/${repo}/blob/${branch}/${node.path}`;
-      const link = document.createElement('a');
-      link.href = url;
-      document.body.appendChild(link);
-      link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-      document.body.removeChild(link);
-    }
+  // In PR mode the tree is scoped to only the files that PR touched, annotated with +/- stats
+  useEffect(() => {
+    if (mode !== 'pulls' || selectedPrNumber == null) return;
+    let cancelled = false;
+    setLoading(true);
+    chrome.storage.sync.get(['githubToken'], async (result) => {
+      try {
+        const files = await fetchPullRequestFiles(owner, repo, selectedPrNumber, result.githubToken);
+        if (cancelled) return;
+        setTree(buildPrTree(files));
+        setError('');
+        setIsPrivateHint(false);
+      } catch (err: any) {
+        if (cancelled) return;
+        setError(err.message || 'Failed to fetch pull request files');
+        setIsPrivateHint(!!(err as any).isPrivateRepoHint || !!(err as any).isAuthError);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [owner, repo, mode, selectedPrNumber]);
+
+  const handleNodeClick = async (node: TreeNode) => {
+    if (node.type !== 'blob') return;
+    // In PR mode, jump straight to that file's diff instead of the plain blob view
+    const url = mode === 'pulls' && selectedPrNumber != null
+      ? `/${owner}/${repo}/pull/${selectedPrNumber}/files#diff-${await sha256Hex(node.path)}`
+      : `/${owner}/${repo}/blob/${branch}/${node.path}`;
+    // Navigate without a hard reload by simulating a click that GitHub's Turbo router intercepts
+    const link = document.createElement('a');
+    link.href = url;
+    document.body.appendChild(link);
+    link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+    document.body.removeChild(link);
   };
 
   const handleDownloadFile = async (e: React.MouseEvent, node: TreeNode) => {
@@ -105,10 +292,12 @@ const Sidebar: React.FC<SidebarProps> = ({ owner, repo }) => {
 
   const renderTree = (nodes: TreeNode[]) => {
     return nodes.map(node => (
-      <TreeItem 
-        key={node.path} 
-        label={node.name} 
+      <TreeItem
+        key={node.path}
+        label={node.name}
         isFolder={node.type === 'tree'}
+        additions={node.additions}
+        deletions={node.deletions}
         onClick={() => handleNodeClick(node)}
         onIconClick={(e) => handleDownloadFile(e, node)}
       >
@@ -177,7 +366,8 @@ const Sidebar: React.FC<SidebarProps> = ({ owner, repo }) => {
     });
     return files;
   };
-  const allFiles = getAllFiles(tree);
+  const displayedTree = docsFilterOn ? filterDocsAndConfigTree(tree) : tree;
+  const allFiles = getAllFiles(displayedTree);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -257,36 +447,107 @@ const Sidebar: React.FC<SidebarProps> = ({ owner, repo }) => {
           </button>
         </div>
 
-        {/* Branch select */}
+        {/* Branch / PR mode toggle */}
         {branches.length > 0 && (
-          <div style={{ marginBottom: '10px', position: 'relative' }}>
-            <span style={{
-              position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)',
-              fontSize: '13px', pointerEvents: 'none', color: cs.orange,
-            }}>⎇</span>
-            <select
-              value={branch}
-              onChange={e => setBranch(e.target.value)}
-              className="octo-branch-select"
-              style={{
-                width: '100%',
-                background: 'rgba(255,255,255,0.05)',
-                color: cs.text,
-                border: `1px solid ${cs.border}`,
-                borderRadius: '10px',
-                fontFamily: cs.font,
-                fontSize: '13px',
-                fontWeight: 600,
-                padding: '7px 10px 7px 28px',
-                outline: 'none',
-                cursor: 'pointer',
-                appearance: 'none',
-                WebkitAppearance: 'none',
-              }}
-            >
-              {branches.map(b => <option key={b} value={b}>{b}</option>)}
-            </select>
-          </div>
+          <>
+            <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+              {(['branches', 'pulls'] as RefMode[]).map(m => (
+                <button
+                  key={m}
+                  onClick={() => (m === 'branches' ? switchToBranches() : switchToPulls())}
+                  title={m === 'branches' ? 'Show branches' : 'Show open pull requests'}
+                  style={{
+                    flex: 1,
+                    cursor: 'pointer',
+                    background: mode === m ? `linear-gradient(135deg, ${cs.orange}, ${cs.coral})` : 'rgba(255,255,255,0.05)',
+                    color: mode === m ? '#fff' : cs.muted,
+                    border: `1px solid ${cs.border}`,
+                    borderRadius: '10px',
+                    fontFamily: cs.font,
+                    fontWeight: 700,
+                    fontSize: '12px',
+                    padding: '6px 8px',
+                    transition: 'background 0.15s, color 0.15s',
+                  }}
+                >
+                  {m === 'branches' ? '⎇ Branches' : '⇄ Pull Requests'}
+                </button>
+              ))}
+            </div>
+
+            {mode === 'branches' ? (
+              <div style={{ marginBottom: '10px', position: 'relative' }}>
+                <span style={{
+                  position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)',
+                  fontSize: '13px', pointerEvents: 'none', color: cs.orange,
+                }}>⎇</span>
+                <select
+                  value={branch}
+                  onChange={e => { setBranch(e.target.value); setSavedBranch(e.target.value); }}
+                  className="octo-branch-select"
+                  style={{
+                    width: '100%',
+                    background: 'rgba(255,255,255,0.05)',
+                    color: cs.text,
+                    border: `1px solid ${cs.border}`,
+                    borderRadius: '10px',
+                    fontFamily: cs.font,
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    padding: '7px 10px 7px 28px',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                  }}
+                >
+                  {branches.map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
+              </div>
+            ) : (
+              <div style={{ marginBottom: '10px', position: 'relative' }}>
+                <span style={{
+                  position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)',
+                  fontSize: '13px', pointerEvents: 'none', color: cs.orange,
+                }}>⇄</span>
+                {pullsLoading && (
+                  <div style={{ color: cs.muted, fontSize: '12px', fontWeight: 600, padding: '4px 2px' }}>Loading pull requests…</div>
+                )}
+                {!pullsLoading && pullsError && (
+                  <div style={{ color: cs.coral, fontSize: '12px', fontWeight: 600, padding: '4px 2px' }}>{pullsError}</div>
+                )}
+                {!pullsLoading && !pullsError && pulls.length === 0 && (
+                  <div style={{ color: cs.muted, fontSize: '12px', fontWeight: 600, padding: '4px 2px' }}>No open pull requests</div>
+                )}
+                {!pullsLoading && !pullsError && pulls.length > 0 && (
+                  <select
+                    value={selectedPrNumber ?? ''}
+                    onChange={handleSelectPull}
+                    className="octo-branch-select"
+                    style={{
+                      width: '100%',
+                      background: 'rgba(255,255,255,0.05)',
+                      color: cs.text,
+                      border: `1px solid ${cs.border}`,
+                      borderRadius: '10px',
+                      fontFamily: cs.font,
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      padding: '7px 10px 7px 28px',
+                      outline: 'none',
+                      cursor: 'pointer',
+                      appearance: 'none',
+                      WebkitAppearance: 'none',
+                    }}
+                  >
+                    {pulls.map(pr => (
+                      <option key={pr.number} value={pr.number}>#{pr.number} {pr.title}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            )}
+          </>
         )}
 
         {/* Search */}
@@ -296,11 +557,13 @@ const Sidebar: React.FC<SidebarProps> = ({ owner, repo }) => {
             fontSize: '13px', pointerEvents: 'none', color: cs.muted,
           }}>🔍</span>
           <input
+            ref={searchInputRef}
             type="search"
             list="octo-free-files"
             value={searchQuery}
             onChange={handleSearch}
-            placeholder="Search files…"
+            placeholder="Search files… (press /)"
+            aria-label="Search files"
             style={{
               width: '100%',
               background: 'rgba(255,255,255,0.05)',
@@ -364,7 +627,13 @@ const Sidebar: React.FC<SidebarProps> = ({ owner, repo }) => {
           </div>
         )}
 
-        {!loading && !error && renderTree(tree)}
+        {!loading && !error && docsFilterOn && displayedTree.length === 0 && (
+          <div role="status" style={{ padding: '24px 14px', textAlign: 'center', color: cs.muted, fontSize: '13px', fontWeight: 600, lineHeight: 1.5 }}>
+            👁️ No markdown docs or agent config folders found in this repo.
+          </div>
+        )}
+
+        {!loading && !error && renderTree(displayedTree)}
       </div>
 
       {/* ── Footer ── */}
@@ -378,25 +647,48 @@ const Sidebar: React.FC<SidebarProps> = ({ owner, repo }) => {
         background: cs.bgHeader,
       }}>
         <span style={{ fontSize: '11px', color: cs.muted, fontWeight: 600 }}>
-          {allFiles.length} files
+          {allFiles.length} {docsFilterOn ? 'docs' : 'files'}
         </span>
-        <button
-          onClick={() => chrome.runtime.sendMessage({ action: 'openOptions' })}
-          title="Token settings"
-          style={{
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '16px',
-            opacity: 0.55,
-            transition: 'opacity 0.15s',
-            padding: '2px 4px',
-          }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.55'; }}
-        >
-          ⚙️
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <button
+            onClick={() => setDocsFilterOn(!docsFilterOn)}
+            title={docsFilterOn ? 'Show full file tree' : 'Show only docs & agent config'}
+            aria-label={docsFilterOn ? 'Show full file tree' : 'Show only docs & agent config'}
+            aria-pressed={docsFilterOn}
+            style={{
+              background: docsFilterOn ? 'rgba(255,160,50,0.18)' : 'transparent',
+              border: docsFilterOn ? `1px solid ${cs.border}` : '1px solid transparent',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '16px',
+              opacity: docsFilterOn ? 1 : 0.55,
+              transition: 'opacity 0.15s, background 0.15s',
+              padding: '2px 4px',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = docsFilterOn ? '1' : '0.55'; }}
+          >
+            👁️
+          </button>
+          <button
+            onClick={() => chrome.runtime.sendMessage({ action: 'openOptions' })}
+            title="Token settings"
+            aria-label="Token settings"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '16px',
+              opacity: 0.55,
+              transition: 'opacity 0.15s',
+              padding: '2px 4px',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.55'; }}
+          >
+            ⚙️
+          </button>
+        </div>
       </div>
     </div>
   );
